@@ -1,19 +1,19 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
 <package format="1" xmlns="https://wiki.freecad.org/Package_Metadata">
-  <name>Constraint Design</name>
-  <description>This addon adds a design workbench that is specially designed to be as flexible and stable as possible.</description>
+  <name>Constructions soudées</name>
+  <description>Vous pouvez utiliser des lignes pour définir la structure de base d'une construction soudée, puis créer des éléments mécano-soudés contenant des groupes de segments d'esquisse.</description>
   <version>beta-0.1</version>
   <date>2025.8.26</date>
-  <maintainer email="drwho495555@gmail.com">drwho495</maintainer>
+  <maintainer email="1234@gmail.com">Labranche</maintainer>
   <license file="LICENSE">LGPL-2.1-only</license>
-  <url type="repository" branch="main">https://github.com/drwho495/ConstraintDesign-wb</url>
-  <url type="documentation">https://github.com/drwho495/ConstraintDesign-wb</url>
-  <url type="readme">https://github.com/drwho495/ConstraintDesign-wb/blob/main/README.md</url>
+  <url type="repository" branch="main">https://github.com/LLabranche/Constructions-soudees</url>
+  <url type="documentation">https://github.com/LLabranche/Constructions-soudees</url>
+  <url type="readme">https://github.com/LLabranche/Constructions-soudees/blob/main/README.md</url>
   <content>
     <workbench>
       <classname>ConstraintDesign</classname>
       <subdirectory>./</subdirectory>
-      <icon>icons/ConstraintPart.svg</icon>
+      <icon>ressources/icons/Weldments.png</icon>
       <tag>design</tag>
       <freecadmin>1.0.0</freecadmin>
     </workbench>
