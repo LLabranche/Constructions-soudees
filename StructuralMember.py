@@ -4,7 +4,47 @@ import FreeCAD, FreeCADGui, Part
 class StructuralMemberCommand:
     def GetResources(self):
         return {
-            "Pixmap": "C:\Program Files\FreeCAD 1.0\Mod\Weldments\Resources\Icons\StructuralMember.png",
+            "Pixmap": """
+/* XPM */
+static const char *Weldments_xpm[] = {
+"32 32 3 1",
+" 	c None",
+".	c #323232",
+"+	c #FF9800",
+"                                ",
+"                                ",
+"        ................        ",
+"       .++++++++++++++++.       ",
+"      .++++++++++++++++++.      ",
+"     .+++++++........++++++.     ",
+"     .++++++..........+++++.    ",
+"     .+++++............+++++.   ",
+"     .+++++............+++++.   ",
+"     .+++++....++++....+++++.   ",
+"     .+++++....++++....+++++.   ",
+"     .+++++............+++++.   ",
+"     .+++++............+++++.   ",
+"     .++++++..........+++++.    ",
+"     .+++++++........++++++.     ",
+"      .++++++++++++++++++.      ",
+"       .++++++++++++++++.       ",
+"        ................        ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                ",
+"                                "
+};
+""",
             "MenuText": "StructuralMember",
             'ToolTip': 'Ajoute un élément structurel simple',
         }
