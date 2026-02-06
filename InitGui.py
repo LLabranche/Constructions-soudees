@@ -1,9 +1,5 @@
 import FreeCAD
 import FreeCADGui
-import os
-
-from StructuralMember import StructuralMemberCommand
-
 
 class Weldments(FreeCADGui.Workbench):
 
@@ -251,6 +247,8 @@ static char * Weldments_xpm[] = {
 """
 
     def Initialize(self):
+        from StructuralMember import StructuralMemberCommand
+        
         # Enregistrement de la commande
         FreeCADGui.addCommand('StructuralMember', StructuralMemberCommand())
 
@@ -269,4 +267,5 @@ static char * Weldments_xpm[] = {
 
 
 FreeCADGui.addWorkbench(Weldments())
+
 
