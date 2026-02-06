@@ -4,7 +4,48 @@ from StructuralMember import StructuralMemberCommand
 class Weldments(FreeCADGui.Workbench):
     MenuText = "Weldments"
     ToolTip = "Design of metalworking parts and assemblies"
-    Icon = "C:\Program Files\FreeCAD 1.0\Mod\Weldments\Resources\Icons\Weldments.png"
+    Icon = """
+    /* XPM */
+    static char * weldments_xpm[] = {
+    "32 32 4 1",
+    " 	c None",
+    ".	c #1E1E1E",
+    "+	c #FF9800",
+    "@	c #FFFFFF",
+    "                                ",
+    "                                ",
+    "        ..............          ",
+    "       ..++++++++++++..         ",
+    "      ..++++++++++++++..        ",
+    "     ..+++++++....++++++..      ",
+    "     .+++++++......++++++.      ",
+    "     .++++++........++++++.     ",
+    "     .+++++..........+++++.     ",
+    "     .+++++..........+++++.     ",
+    "     .+++++....@@@@....++++.     ",
+    "     .+++++....@@@@....++++.     ",
+    "     .+++++..........+++++.     ",
+    "     .+++++..........+++++.     ",
+    "     .++++++........++++++.     ",
+    "     .+++++++......++++++.      ",
+    "     ..+++++++....++++++..      ",
+    "      ..++++++++++++++++..      ",
+    "       ..++++++++++++++..       ",
+    "        ..............          ",
+    "                                ",
+    "           @@@@@@@@             ",
+    "          @@@@@@@@@@            ",
+    "         @@@@      @@           ",
+    "        @@@         @@          ",
+    "       @@@           @@         ",
+    "      @@@             @@        ",
+    "     @@@               @@       ",
+    "                                ",
+    "                                ",
+    "                                ",
+    "                                "
+    };
+    """
 
     def Initialize(self):
 
@@ -24,5 +65,6 @@ class Weldments(FreeCADGui.Workbench):
 
     def GetClassName(self):
         return "Gui::PythonWorkbench"
+
 
 FreeCADGui.addWorkbench(Weldments())
