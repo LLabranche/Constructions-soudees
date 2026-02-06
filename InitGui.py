@@ -252,20 +252,11 @@ static char * Weldments_xpm[] = {
 
     def Initialize(self):
         # Enregistrement de la commande
-        FreeCADGui.addCommand(
-            "StructuralMember",
-            StructuralMemberCommand()
-        )
+        FreeCADGui.addCommand('StructuralMember', StructuralMemberCommand())
 
         # Barres d'outils et menus
-        self.appendToolbar(
-            "Outils Structure",
-            ["StructuralMember"]
-        )
-        self.appendMenu(
-            "Structure",
-            ["StructuralMember"]
-        )
+        self.appendToolbar("Outils Structure", ["StructuralMember"])
+        self.appendMenu("Structure", ["StructuralMember"])
 
     def Activated(self):
         FreeCAD.Console.PrintMessage("Atelier Weldments activé\n")
@@ -278,3 +269,4 @@ static char * Weldments_xpm[] = {
 
 
 FreeCADGui.addWorkbench(Weldments())
+
