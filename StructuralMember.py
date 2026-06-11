@@ -1,91 +1,76 @@
-import FreeCAD, FreeCADGui, Part
-from icon import StructuralMember
-
-
 class StructuralMemberCommand:
+
     def GetResources(self):
+        import os
         return {
-            "Pixmap": StructuralMember,
-            "MenuText": "StructuralMember",
-            'ToolTip': 'Ajoute un élément structurel simple',
+            "Pixmap": os.path.join(os.path.dirname(__file__), "icons", "StructuralMember.png" ),
+            "MenuText": "Elément mécano-soudé",
+            'ToolTip': 'Ajouter un profil mécano-soudé',
         }
 
     def IsActive(self):
         return True
 
     def Activated(self):
-        import FreeCAD
-        import FreeCADGui
-        from FreeCAD import Vector
         import FreeCAD as App
+        import FreeCADGui as Gui
         import Part
-        from PySide2 import QtWidgets, QtCore
-        import math
-        import Sketcher
+        import os
+        from PySide import QtWidgets, QtGui, QtCore
 
-        profile_data = {
-            "Tube rond": ["17.2x2", "20x1.5", "20x2", "21.3x2"], #1
-            "Tube rectangulaire": ["30x15x1.5", "30x20x2", "35x20x2"],
-            "Tube carré": ["20x20x2", "25x25x1.5", "25x25x2"]
-        }
+        PROFILE_DIR = os.path.join(os.path.dirname(__file__), "profiles")
 
-        def parse_dimensions(profile_type, dimension_str):
-            parts = dimension_str.split("x")
-            if len(parts) == 1:
-                return float(parts[0]), None, None
-            if len(parts) == 2:
-                return float(parts[0]), float(parts[1]), None
-            if len(parts) == 3:
-                return float(parts[0]), float(parts[1]), float(parts[2])
+        class ProfileSweepTaskPanel:
 
-        class ProfileTaskPanel:
             def __init__(self):
                 # Initialiser variables
                 self.body = []
                 self.shapebinder = []
                 self.sketch = []
                 self.additivepipe = []
+                self.selected_edges = []
 
+                # ---------------- UI ----------------
                 self.form = QtWidgets.QWidget()
+                self.form.setWindowTitle("Profilés mecano")
+                
                 self.layout = QtWidgets.QVBoxLayout(self.form)
 
-                # Famille de profil
                 self.family_label = QtWidgets.QLabel("Famille de profil :")
                 self.family_combo = QtWidgets.QComboBox()
-                self.family_combo.addItems(profile_data.keys())
 
-                # Dimensions
-                self.dim_label = QtWidgets.QLabel("Dimensions :")
-                self.dim_combo = QtWidgets.QComboBox()
+                self.profil_label = QtWidgets.QLabel("Profil :")
+                self.profil_combo = QtWidgets.QComboBox()
 
-                # Symétrie
                 self.symmetry_checkbox = QtWidgets.QCheckBox("Symétriser le profil")
 
-                # Rotation
                 self.rotation_label = QtWidgets.QLabel("Rotation du profil (°) :")
                 self.rotation_input = QtWidgets.QLineEdit()
                 self.rotation_input.setPlaceholderText("0.0")
 
-                # Décalage X
                 self.offset_x_label = QtWidgets.QLabel("Décalage X (mm) :")
                 self.offset_x_input = QtWidgets.QLineEdit()
                 self.offset_x_input.setPlaceholderText("0.0")
 
-                # Décalage Y
                 self.offset_y_label = QtWidgets.QLabel("Décalage Y (mm) :")
                 self.offset_y_input = QtWidgets.QLineEdit()
                 self.offset_y_input.setPlaceholderText("0.0")
 
-                # Aide
-                self.select_line_label = QtWidgets.QLabel(
-                    "<b>Veuillez sélectionner une ligne dans la vue 3D.</b>"
-                )
+                self.edges_label = QtWidgets.QLabel("<b>Trajectoire (Arêtes / Lignes sélectionnées) :</b>")
+                
+                self.edges_list = QtWidgets.QListWidget()
 
-                # Ajouter au layout
+                self.buttons_layout = QtWidgets.QHBoxLayout()
+                self.btn_add_edge = QtWidgets.QPushButton("Ajouter la sélection")
+                self.btn_clear_edges = QtWidgets.QPushButton("Vider la liste")
+                self.buttons_layout.addWidget(self.btn_add_edge)
+                self.buttons_layout.addWidget(self.btn_clear_edges)
+                self.btn_refresh = QtWidgets.QPushButton("Rafraîchir")
+
                 self.layout.addWidget(self.family_label)
                 self.layout.addWidget(self.family_combo)
-                self.layout.addWidget(self.dim_label)
-                self.layout.addWidget(self.dim_combo)
+                self.layout.addWidget(self.profil_label)
+                self.layout.addWidget(self.profil_combo)
                 self.layout.addSpacing(10)
                 self.layout.addWidget(self.symmetry_checkbox)
                 self.layout.addSpacing(10)
@@ -95,139 +80,200 @@ class StructuralMemberCommand:
                 self.layout.addWidget(self.offset_x_input)
                 self.layout.addWidget(self.offset_y_label)
                 self.layout.addWidget(self.offset_y_input)
-                self.layout.addSpacing(10)
-                self.layout.addWidget(self.select_line_label)
+                self.layout.addSpacing(15)
+                self.layout.addWidget(self.edges_label)
+                self.layout.addWidget(self.edges_list)
+                self.layout.addLayout(self.buttons_layout)
+                self.layout.addWidget(self.btn_refresh)
 
                 # Connexions des signaux
-                self.family_combo.currentTextChanged.connect(self.update_dimensions)
-                self.family_combo.currentTextChanged.connect(self.update_preview)
-                self.dim_combo.currentTextChanged.connect(self.update_preview)
-                self.symmetry_checkbox.stateChanged.connect(self.update_preview)
-                self.rotation_input.textChanged.connect(self.update_preview)
-                self.offset_x_input.textChanged.connect(self.update_preview)
-                self.offset_y_input.textChanged.connect(self.update_preview)
+                self.family_combo.currentIndexChanged.connect(self.update_profiles)
+                self.btn_add_edge.clicked.connect(self.add_selected_edges)
+                self.btn_clear_edges.clicked.connect(self.clear_edges)
+                self.btn_refresh.clicked.connect(self.update_preview)
 
-                # Initialiser les dimensions
-                self.update_dimensions(self.family_combo.currentText())
+                # Initialiser les familles
+                self.load_families()
 
-            def update_dimensions(self, selected_family):
-                self.dim_combo.blockSignals(True)
-                self.dim_combo.clear()
-                if selected_family in profile_data:
-                    self.dim_combo.addItems(profile_data[selected_family])
-                self.dim_combo.blockSignals(False)
+            def load_families(self):
+
+                self.family_combo.clear()
+
+                if not os.path.exists(PROFILE_DIR):
+                    App.Console.PrintError("Dossier profiles introuvable\n")
+                    return
+
+                families = [
+                    f for f in os.listdir(PROFILE_DIR)
+                    if os.path.isdir(os.path.join(PROFILE_DIR, f))
+                ]
+
+                self.family_combo.addItems(families)
+
+                if families:
+                    self.update_profiles()
+
+            def update_profiles(self):
+
+                self.profil_combo.clear()
+
+                family = self.family_combo.currentText()
+                path = os.path.join(PROFILE_DIR, family)
+
+                if not os.path.exists(path):
+                    return
+
+                profiles = [
+                    os.path.splitext(f)[0]
+                    for f in os.listdir(path)
+                    if f.lower().endswith(".fcstd")
+                ]
+
+                self.profil_combo.addItems(profiles)
+
+            # =================================================
+            # GET SELECTED EDGES
+            # =================================================
+            def add_selected_edges(self):
+                """Récupère les arêtes sélectionnées dans l'écran 3D de FreeCAD et les ajoute à la liste"""
+                selection = Gui.Selection.getSelectionEx()
+                if not selection:
+                    self.edges_label.setText("<font color='red'><b>Aucune sélection dans la vue 3D !</b></font>")
+                    return
+
+                for sel in selection:
+                    obj = sel.Object
+                    
+                    # Cas 1 : L'utilisateur a sélectionné des arêtes spécifiques (SubObjects)
+                    if sel.HasSubObjects:
+                        for sub_obj, sub_name in zip(sel.SubObjects, sel.SubElementNames):
+                            if isinstance(sub_obj, Part.Edge):
+                                item_text = f"{obj.Name} : {sub_name}"
+                                if not self.edges_list.findItems(item_text, QtCore.Qt.MatchExactly):
+                                    self.edges_list.addItem(item_text)
+                                    self.selected_edges.append((obj, sub_name))
+                    else:
+                        # Cas 2 : L'utilisateur a sélectionné un objet filaire complet (ex: une ligne seule)
+                        if hasattr(obj, "Shape") and obj.Shape.ShapeType == "Edge":
+                            item_text = f"{obj.Name} (Objet Complet)"
+                            if not self.edges_list.findItems(item_text, QtCore.Qt.MatchExactly):
+                                self.edges_list.addItem(item_text)
+                                self.selected_edges.append((obj, ""))
+                            
+                self.edges_label.setText("<b>Trajectoire (Arêtes / Lignes sélectionnées) :</b>")
+                self.update_preview()
+
+            def clear_edges(self):
+                """Vide la liste des trajectoires"""
+                self.edges_list.clear()
+                self.selected_edges = []
+                self.edges_label.setText("<b>Trajectoire (Arêtes / Lignes sélectionnées) :</b>")
                 self.update_preview()
                 
+            def clear_preview_objects(self):
+                doc = App.activeDocument()
+                
+                for obj_list in [self.body, self.shapebinder, self.sketch, self.additivepipe]:
+                    for obj in obj_list:
+                        try:
+                            doc.removeObject(obj.Name)
+                        except:
+                            pass
+
+                self.body.clear()
+                self.shapebinder.clear()
+                self.sketch.clear()
+                self.additivepipe.clear()
+
             def update_preview(self):
                 doc = App.activeDocument()
-                selection = FreeCADGui.Selection.getSelectionEx()
+                if not doc:
+                    App.Console.PrintError("Aucun document actif\n")
+                    return
 
-                # Supprimer l'ancien aperçu
-                for i in range(len(self.body)):
-                    doc.removeObject(self.body[i].Name)
-                    doc.removeObject(self.shapebinder[i].Name)
-                    doc.removeObject(self.sketch[i].Name)
-                    doc.removeObject(self.additivepipe[i].Name)
-                    doc.recompute()
-                self.body = []
-                self.shapebinder = []
-                self.sketch = []
-                self.additivepipe = []  
-                
-                # check si il y a une selection
-                if not selection or not selection[0].SubObjects:
+                # 🔥 nettoyage propre
+                self.clear_preview_objects()
+
+                if not self.selected_edges:
                     return
 
                 try:
-                    family = self.family_combo.currentText()
-                    dimension = self.dim_combo.currentText()
-                    symmetry = self.symmetry_checkbox.isChecked()
-                    try:
-                        rotation = float(self.rotation_input.text())
-                    except ValueError:
-                        rotation = 0.0
-                    try:
-                        offset_x = float(self.offset_x_input.text())
-                    except ValueError:
-                        offset_x = 0.0
-                    try:
-                        offset_y = float(self.offset_y_input.text())
-                    except ValueError:
-                        offset_y = 0.0
+                    rotation = float(self.rotation_input.text() or 0)
+                    offset_x = float(self.offset_x_input.text() or 0)
+                    offset_y = float(self.offset_y_input.text() or 0)
 
-                    dim1, dim2, dim3 = parse_dimensions(family, dimension)
-                    if symmetry == True:
-                        angle = 180
-                    else:
-                        angle = 0
+                    angle = 180 if self.symmetry_checkbox.isChecked() else 0
 
-                    counter = 0
-                    for n in range(len(selection)): #Pour chaque objet selectionné
-                        objselect = selection[n].SubObjects
-                        for i in range(len(objselect)): #pour chaque sous objet selectionné
-                            if isinstance(objselect[i], Part.Edge): #Si c'est une ligne
-                                # Créer un nouveau corps
-                                self.body.append(doc.addObject("PartDesign::Body", family + " " + dimension + " "))
-                                doc.recompute()
+                    # 🔥 ouvrir UNE SEULE FOIS
+                    src_path = os.path.join(
+                        PROFILE_DIR,
+                        self.family_combo.currentText(),
+                        self.profil_combo.currentText() + ".FCStd"
+                    )
 
-                                # Creer une reference externe
-                                self.shapebinder.append(self.body[counter].newObject('PartDesign::ShapeBinder','ShapeBinder'))
-                                self.shapebinder[counter].Support = [(selection[n].Object, selection[n].SubElementNames[i])]
-                                self.shapebinder[counter].Visibility = False
-                                doc.recompute()
+                    if not os.path.exists(src_path):
+                        App.Console.PrintError("Profil introuvable\n")
+                        return
 
-                                # Créer une esquisse dans le corps et ancrer sur la ligne de la forme lier
-                                self.sketch.append(self.body[counter].newObject('Sketcher::SketchObject', "Profile "))
-                                self.sketch[counter].AttachmentSupport = [(self.shapebinder[counter], 'Edge1')]
-                                self.sketch[counter].MapMode = 'NormalToEdge'
-                                self.sketch[counter].AttachmentOffset = App.Placement(App.Vector(offset_x,offset_y,0), App.Rotation(rotation, 0, angle))
-                                self.sketch[counter].Visibility = False
-                                doc.recompute()
+                    src_doc = App.open(src_path)
 
-                                # Créer la forme
-                                if family == "Tube rond":
-                                    radius = dim1 / 2
-                                    thickness = dim2
-                                    self.sketch[counter].addGeometry(Part.Circle(App.Vector(0.000000, 0.000000, 0.000000), App.Vector(0.000000, 0.000000, 1.000000), radius))
-                                    self.sketch[counter].addGeometry(Part.Circle(App.Vector(0.000000, 0.000000, 0.000000), App.Vector(0.000000, 0.000000, 1.000000), radius-thickness))
-                                    doc.recompute()
+                    if not src_doc.Objects:
+                        App.Console.PrintError("Profil vide\n")
+                        return
 
-                                elif family == "Tube rectangulaire" or family == "Tube carré":
-                                    width = dim1
-                                    height = dim2
-                                    thickness = dim3
-                                    self.sketch[counter].addGeometry(Part.LineSegment(App.Vector(-25.000000, -25.000000, 0.000000),App.Vector(25.000000, -25.000000, 0.000000)))
-                                    self.sketch[counter].addGeometry(Part.LineSegment(App.Vector(25.000000, -25.000000, 0.000000),App.Vector(25.000000, 25.000000, 0.000000)))
-                                    self.sketch[counter].addGeometry(Part.LineSegment(App.Vector(25.000000, 25.000000, 0.000000),App.Vector(-25.000000, 25.000000, 0.000000)))
-                                    self.sketch[counter].addGeometry(Part.LineSegment(App.Vector(-25.000000, 25.000000, 0.000000),App.Vector(-25.000000, -25.000000, 0.000000)))
-                                    doc.recompute()
+                    profil = src_doc.Objects[0]
 
-                                #creer balayage de mon esquisse sur ma ligne
-                                self.additivepipe.append(self.body[counter].newObject('PartDesign::AdditivePipe','AdditivePipe'))
-                                self.additivepipe[counter].Profile = self.sketch[counter]
-                                self.additivepipe[counter].Spine = (self.shapebinder[counter], 'Edge1')
-                                doc.recompute()
+                    for i, (obj, sub_name) in enumerate(self.selected_edges):
 
-                                counter=counter+1
+                        # Body
+                        body = doc.addObject("PartDesign::Body", f"Body_{i}")
+                        self.body.append(body)
 
+                        # ShapeBinder
+                        sb = body.newObject('PartDesign::ShapeBinder', f"ShapeBinder_{i}")
+                        sb.Support = [(obj, (sub_name,))] if sub_name else [(obj, ())]
+                        sb.Visibility = False
+                        self.shapebinder.append(sb)
+                        doc.recompute()
 
+                        # Sketch (copie profil)
+                        sk = doc.copyObject(profil)
+                        body.addObject(sk)
+                        sk.AttachmentSupport = [(sb, 'Edge1')]
+                        sk.MapMode = 'NormalToEdge'
+                        sk.AttachmentOffset = App.Placement(App.Vector(offset_x, offset_y, 0), App.Rotation(rotation, 0, angle))
+                        sk.Visibility = False
+                        self.sketch.append(sk)
+
+                        # Sweep
+                        pipe = body.newObject('PartDesign::AdditivePipe', f"Pipe_{i}")
+                        pipe.Profile = sk
+                        pipe.Spine = (sb, 'Edge1')
+                        pipe.ViewObject.Transparency = 80  # 🔥 preview propre
+                        self.additivepipe.append(pipe)
+
+                    # 🔥 fermer UNE SEULE FOIS
+                    App.closeDocument(src_doc.Name)
+
+                    # 🔥 UN SEUL recompute
+                    doc.recompute()
 
                 except Exception as e:
-                    FreeCAD.Console.PrintError(f"Erreur d'aperçu : {e=}\n")
+                    App.Console.PrintError(f"Erreur : {e}\n")
 
             def accept(self):
+                for pipe in self.additivepipe:
+                    pipe.ViewObject.Transparency = 0
                 return True
 
             def reject(self):
-                doc = App.activeDocument()
-                for i in range(len(self.body)):
-                    doc.removeObject(self.body[i].Name)
-                    doc.removeObject(self.shapebinder[i].Name)
-                    doc.removeObject(self.sketch[i].Name)
-                    doc.removeObject(self.additivepipe[i].Name)
-                    doc.recompute()
-                FreeCAD.Console.PrintMessage("Opération annulée.\n")
+                self.clear_preview_objects()
+                App.Console.PrintMessage("Opération annulée.\n")
                 return True
 
-        panel = ProfileTaskPanel()
-        FreeCADGui.Control.showDialog(panel)
+
+        # =====================================================
+        # LAUNCH UI
+        # =====================================================
+        panel = ProfileSweepTaskPanel()
+        Gui.Control.showDialog(panel)

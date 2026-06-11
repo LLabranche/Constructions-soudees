@@ -3,9 +3,8 @@ import FreeCADGui
 
 class Weldments(FreeCADGui.Workbench):
 
-    MenuText = "Weldments"
-    ToolTip = "Design of metalworking parts and assemblies"
-
+    MenuText = "Constructions soudées"
+    ToolTip = "Conception de pièces et d'assemblages métalliques"
     Icon = """
 /* XPM */
 static char * Weldments_xpm[] = {
@@ -257,10 +256,10 @@ static char * Weldments_xpm[] = {
         self.appendMenu("Structure", ["StructuralMember"])
 
     def Activated(self):
-        FreeCAD.Console.PrintMessage("Atelier Weldments activé\n")
+        FreeCAD.Console.PrintMessage("Atelier Constructions soudées activé\n")
 
     def Deactivated(self):
-        FreeCAD.Console.PrintMessage("Atelier Weldments désactivé\n")
+        FreeCAD.Console.PrintMessage("Atelier Constructions soudées désactivé\n")
 
     def GetClassName(self):
         return "Gui::PythonWorkbench"
